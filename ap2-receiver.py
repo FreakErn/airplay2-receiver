@@ -19,7 +19,7 @@ from biplist import InvalidPlistException
 
 from ap2.playfair import PlayFair, FairPlayAES
 from ap2.airplay1 import AP1Security
-from ap2.utils import get_volume, set_volume, set_volume_pid, get_screen_logger
+from ap2.utils import get_volume, set_volume, set_volume_pid, get_screen_logger, set_amixer_device
 from ap2.pairing.hap import Hap, HAPSocket, LTPK, DeviceProperties
 from ap2.connections.event import EventGeneric
 from ap2.connections.stream import Stream
@@ -411,6 +411,7 @@ class AP2Handler(http.server.BaseHTTPRequestHandler):
                          "ANNOUNCE, SETUP, RECORD, PAUSE, FLUSH"
                          "FLUSHBUFFERED, TEARDOWN, OPTIONS, POST, GET, PUT"
                          "SETPEERSX"
+                         "SETMAGICCOOKIE"
                          )
         self.end_headers()
 
@@ -866,6 +867,21 @@ class AP2Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("CSeq", self.headers["CSeq"])
         self.end_headers()
 
+    def do_SETMAGICCOOKIE(self):
+        # Appears in iOS 17 betas ( User-Agent: AirPlay/710.66.3 )
+        self.logger.info(f'{self.command}: {self.path}')
+        self.logger.debug(self.headers)
+        content_len = int(self.headers["Content-Length"])
+        if content_len > 0:
+            body = self.rfile.read(content_len)
+
+            plist = readPlistFromString(body)
+            self.logger.info(self.pp.pformat(plist))
+        self.send_response(200)
+        self.send_header("Server", self.version_string())
+        self.send_header("CSeq", self.headers["CSeq"])
+        self.end_headers()
+
     def handle_command(self):
         if self.headers["Content-Type"] == HTTP_CT_BPLIST:
             content_len = int(self.headers["Content-Length"])
@@ -1300,6 +1316,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-fm", "--fakemac", help="Generate and use a random MAC for ethernet address.", action='store_true')
     parser.add_argument("-m", "--mdns", help="mDNS name to announce", default="myap2")
+    parser.add_argument("-a", "--amixer", help="amixer default device", default="Master")
     parser.add_argument("-n", "--netiface", help="Network interface to bind to. Use the --list-interfaces option to list available interfaces.")
     parser.add_argument("-nv", "--no-volume-management", help="Disable volume management", action='store_true')
     parser.add_argument("-npm", "--no-ptp-master", help="Stops this receiver from being announced as the PTP Master",
@@ -1352,6 +1369,8 @@ if __name__ == "__main__":
     DISABLE_PTP_MASTER = args.no_ptp_master
     DEV_PROPS = DeviceProperties(PI, DEBUG)
     DEV_NAME = args.mdns
+    set_amixer_device(args.amixer)
+
     if(parser.get_default('mdns') != DEV_NAME):
         DEV_PROPS.setDeviceName(DEV_NAME)
     else:

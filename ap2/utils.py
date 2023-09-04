@@ -5,6 +5,7 @@ import logging.config
 import platform
 import subprocess
 
+AMIXER_DEVICE = None
 
 # This config needs amending for new modules and when adjusting existing ones.
 logging.config.dictConfig({
@@ -117,6 +118,9 @@ if platform.system() == "Windows":
         ISimpleAudioVolume = None
         print('[!] Pycaw is not installed - volume control will be unavailable', )
 
+def set_amixer_device(amixer_device):
+    global AMIXER_DEVICE
+    AMIXER_DEVICE = amixer_device
 
 def get_file_logger(name, level="INFO"):
     logger = logging.getLogger(name)
@@ -221,7 +225,7 @@ def get_volume():
                 pct = 0
         vol = interpolate(pct, 0, 100, -30, 0)
     elif subsys == "Linux":
-        line_pct = subprocess.check_output(["amixer", "get", "Master"]).splitlines()[-1]
+        line_pct = subprocess.check_output(["amixer", "get", AMIXER_DEVICE]).splitlines()[-1]
         m = re.search(b"\[([0-9]+)%\]", line_pct)
         if m:
             pct = int(m.group(1))
@@ -255,7 +259,7 @@ def set_volume(vol):
     elif subsys == "Linux":
         pct = int(interpolate(vol, -30, 0, 45, 100))
 
-        subprocess.run(["amixer", "set", "Master", f"{pct}%"])
+        subprocess.run(["amixer", "set", AMIXER_DEVICE, f"{pct}%"])
     elif subsys == "Windows":
         volume_session = get_pycaw_volume_session()
         if volume_session:

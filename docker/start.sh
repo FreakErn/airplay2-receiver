@@ -12,6 +12,11 @@ if [ "${NO_VOLUME_MANAGEMENT}" = "true" ]; then
     NO_VOLUME_MANAGEMENT_FLAG='--no-volume-management'
 fi
 
+AMIXERDEVICE="Master"
+if [ ! -z "${AMIXER_DEVICE}" ]; then
+	AMIXERDEVICE=$AMIXER_DEVICE
+fi
+
 
 # Swap hostname in the avahi config
 sed "s/\(host-name=\).*/\1${AP2HOSTNAME}/g" -i /etc/avahi/avahi-daemon.conf
@@ -22,4 +27,4 @@ sed "s/\(host-name=\).*/\1${AP2HOSTNAME}/g" -i /etc/avahi/avahi-daemon.conf
 
 # Start AirPlay 2 service
 cd /airplay2
-exec python3 ap2-receiver.py -m ${AP2HOSTNAME} -n ${AP2IFACE} ${NO_VOLUME_MANAGEMENT_FLAG}
+exec python3 ap2-receiver.py -m ${AP2HOSTNAME} -n ${AP2IFACE} -a ${AMIXERDEVICE} ${NO_VOLUME_MANAGEMENT_FLAG}
